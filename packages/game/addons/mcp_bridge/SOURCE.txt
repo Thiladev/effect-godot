@@ -1,0 +1,5 @@
+Vendored from https://github.com/slangwald/godot-mcp (MIT), the addons/mcp_bridge/
+directory of that repo (the editor-side TCP bridge). The game-side half is
+packages/game/src/mcp_bridge_game.gd; the MCP server process itself lives in
+packages/godot-mcp/, not under packages/game/, since it isn't part of the Godot
+project's res:// filesystem.

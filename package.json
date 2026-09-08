@@ -1,0 +1,16 @@
+{
+  "name": "effect-godot",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "bun run --cwd packages/game build",
+    "dev": "bun run --cwd packages/game dev",
+    "typegen": "bun run --cwd packages/game typegen",
+    "edit": "bun run --cwd packages/game edit",
+    "run": "bun run --cwd packages/game run",
+    "cef:fetch": "bun run --cwd packages/game cef:fetch"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

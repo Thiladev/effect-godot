@@ -1,0 +1,13 @@
+{
+  "name": "@codename-painless/godot-bin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "godot-bin": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@effect/platform-bun": "^4.0.0-rc.112",
+    "effect": "^4.0.0-rc.112"
+  }
+}

@@ -1,0 +1,5 @@
+rock_diffuse.jpg — "Marble Rock 01" (marble_rock_01), 2K diffuse map
+snow_diffuse.jpg — "Snow 02" (snow_02), 2K diffuse map
+
+Source: Poly Haven (https://polyhaven.com), CC0 1.0 Universal (public domain).
+No attribution required, credited here for provenance only.

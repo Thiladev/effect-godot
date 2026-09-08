@@ -1,0 +1,28 @@
+{
+  "name": "@codename-painless/game",
+  "version": "0.0.0",
+  "devDependencies": {
+    "@effect/platform-bun": "^4.0.0-rc.112",
+    "@codename-painless/godot-bin": "workspace:*",
+    "@types/node": "^26.4.1",
+    "esbuild": "^0.28.2",
+    "rolldown": "^1.2.7"
+  },
+  "private": true,
+  "scripts": {
+    "build": "rolldown -c config/rolldown.config.ts",
+    "dev": "bun run config/dev-watch.ts",
+    "godot:fetch": "godot-bin --project . fetch",
+    "godot:path": "godot-bin --project . path",
+    "cef:fetch": "godot-bin --project . cef fetch",
+    "edit": "bun run build && godot-bin --project . run -- --editor --path .",
+    "run": "bun run build && godot-bin --project . run -- --path .",
+    "typegen": "bun run build && godot-bin --project . run -- --headless --editor --generate-types --path ."
+  },
+  "type": "module",
+  "dependencies": {
+    "@codename-painless/common": "workspace:*",
+    "effect": "^4.0.0-rc.112",
+    "mitt": "^3.0.1"
+  }
+}
