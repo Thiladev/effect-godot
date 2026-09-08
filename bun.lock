@@ -11,6 +11,9 @@
     "packages/effect-godot": {
       "name": "effect-godot",
       "version": "0.0.0",
+      "dependencies": {
+        "effect": "^4.0.0-rc.112",
+      },
     },
     "packages/game": {
       "name": "@effect-godot/game",
