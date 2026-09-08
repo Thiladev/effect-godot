@@ -1,9 +1,3 @@
 .godot/
 .godot-bin/
 node_modules/
-# Platform CEF runtime binaries (~1GB), fetched by `godot-bin cef fetch`
-addons/godot_cef/bin/
-addons/libpainless/bin/
-gen/
-typings/*.d.ts
-*.tsbuildinfo

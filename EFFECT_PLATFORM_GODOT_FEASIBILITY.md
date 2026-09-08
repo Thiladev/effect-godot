@@ -104,10 +104,10 @@ subscriptions after a scene transition.
 
 ## Proposed package shape
 
-Start in this workspace as `packages/effect-platform-godot` under the internal
-scope `@codename-painless/effect-platform-godot`. Keep it independently
-publishable; an unscoped `effect-platform-godot` package name or the
-`@effect/*` namespace should not be assumed available.
+Start in this workspace as `packages/effect-platform-godot` under the
+`@effect-godot/effect-platform-godot` scope. Keep it independently
+publishable; an unscoped `effect-platform-godot` package name should not be
+assumed available.
 
 ```text
 packages/effect-platform-godot/

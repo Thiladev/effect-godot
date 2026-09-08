@@ -10,8 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Codename Painless"
-run/main_scene="res://src/main/MainMenu.tscn"
+config/name="Example"
 config/features=PackedStringArray("4.6")
 
 [physics]
@@ -20,9 +19,8 @@ common/physics_interpolation=true
 
 [autoload]
 
-GameState="*res://src/game-state/GameState.ts"
 McpBridgeGame="*res://src/mcp_bridge_game.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg", "res://addons/sky_3d/plugin.cfg", "res://addons/foliage_3d/plugin.cfg", "res://addons/mcp_bridge/plugin.cfg")
+enabled=PackedStringArray("res://addons/mcp_bridge/plugin.cfg")

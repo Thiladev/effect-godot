@@ -1,5 +1,5 @@
 {
-  "name": "@codename-painless/godot-bin",
+  "name": "@effect-godot/godot-bin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
