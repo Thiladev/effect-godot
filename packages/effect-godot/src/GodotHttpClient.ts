@@ -1,4 +1,4 @@
-import { Effect, Inspectable, Layer, Option, type Pipeable, type Schema, Stream } from "effect"
+import { Duration, Effect, Exit, Inspectable, Layer, Option, type Pipeable, Queue, type Schema, Stream } from "effect"
 import { pipeArguments } from "effect/Pipeable"
 import * as Cookies from "effect/unstable/http/Cookies"
 import * as Headers from "effect/unstable/http/Headers"
@@ -9,47 +9,61 @@ import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as HttpIncomingMessage from "effect/unstable/http/HttpIncomingMessage"
 import * as HttpMethod from "effect/unstable/http/HttpMethod"
 import * as UrlParams from "effect/unstable/http/UrlParams"
-import type {
-    Callable,
-    HTTPClient as GodotHTTPClient,
-    HTTPRequest,
-    Node,
-    PackedByteArray,
-    PackedStringArray,
-} from "godot"
+import type { HTTPClient as GodotHTTPClient, PackedByteArray, PackedStringArray, TLSOptions } from "godot"
 
-/** The default maximum decompressed response body size. */
+
+/** The default maximum accumulated response body size. */
 export const DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 
-/** The callback shape emitted by `HTTPRequest.request_completed`. */
-export type GodotHttpRequestCompleted = (
-    result: number,
-    status: number,
-    headers: PackedStringArray,
-    body: PackedByteArray,
-) => void
+/** The default delay between `HTTPClient.poll()` calls while awaiting progress. */
+export const DEFAULT_POLL_INTERVAL: Duration.Input = Duration.millis(4)
 
 /**
  * Dependencies needed to construct the Effect `HttpClient` layer.
  *
- * Factories are explicit so this module remains safe to import in Bun/Node
- * tests, where the runtime-only `godot` module is not available.
+ * `createClient` is a factory (not a shared instance) so this module remains
+ * safe to import in Bun/Node tests, where the runtime-only `godot` module is
+ * not available, and so every request gets its own connection.
  */
 export interface GodotHttpClientOptions {
-    readonly parent: Pick<Node, "add_child">
-    readonly createRequest: () => HTTPRequest
-    readonly createCallable: (
-        listener: GodotHttpRequestCompleted,
-    ) => Callable<GodotHttpRequestCompleted>
+    readonly createClient: () => GodotHTTPClient
+    /**
+     * Required for `https://` requests. Godot's `HTTPClient.connect_to_host`
+     * only negotiates TLS when given a `TLSOptions` instance (typically
+     * `TLSOptions.client()`), so this is a factory rather than a plain
+     * boolean to avoid silently downgrading to plaintext.
+     */
+    readonly createTlsOptions?: () => TLSOptions | null
     readonly maxBodyBytes?: number
-    readonly timeoutSeconds?: number
-    readonly maxRedirects?: number
-    readonly acceptGzip?: boolean
+    readonly readChunkSize?: number
+    readonly pollInterval?: Duration.Input
 }
 
 const GODOT_OK = 0
-const GODOT_RESULT_SUCCESS = 0
-const GODOT_RESULT_BODY_SIZE_LIMIT_EXCEEDED = 7
+
+const GODOT_STATUS_DISCONNECTED = 0
+const GODOT_STATUS_RESOLVING = 1
+const GODOT_STATUS_CANT_RESOLVE = 2
+const GODOT_STATUS_CONNECTING = 3
+const GODOT_STATUS_CANT_CONNECT = 4
+const GODOT_STATUS_CONNECTED = 5
+const GODOT_STATUS_REQUESTING = 6
+const GODOT_STATUS_BODY = 7
+const GODOT_STATUS_CONNECTION_ERROR = 8
+const GODOT_STATUS_TLS_HANDSHAKE_ERROR = 9
+
+const GODOT_STATUS_AWAITING_CONNECTION: ReadonlySet<number> = new Set([
+    GODOT_STATUS_DISCONNECTED,
+    GODOT_STATUS_RESOLVING,
+    GODOT_STATUS_CONNECTING,
+])
+
+const GODOT_STATUS_ERROR_DESCRIPTIONS: Record<number, string> = {
+    [GODOT_STATUS_CANT_RESOLVE]: "failed to resolve host",
+    [GODOT_STATUS_CANT_CONNECT]: "failed to connect to host",
+    [GODOT_STATUS_CONNECTION_ERROR]: "connection error",
+    [GODOT_STATUS_TLS_HANDSHAKE_ERROR]: "TLS handshake failed",
+}
 
 const GODOT_METHOD: Record<HttpMethod.HttpMethod, GodotHTTPClient.Method> = {
     GET: 0,
@@ -110,11 +124,30 @@ const encodeRequestBody = (
                 "GodotHttpClient only supports string and byte-array request bodies",
             )
         }
-        case "FormData":
-        case "Stream":
-            return unsupported(
-                "GodotHttpClient does not support streaming or multipart request bodies",
+        case "Stream": {
+            // Godot's `HTTPClient.request_raw` takes the whole body in one
+            // call; there is no incremental write API for outgoing requests
+            // (unlike the response, which is read incrementally through
+            // `read_response_body_chunk`). So a streamed body is buffered in
+            // full before sending rather than truly streamed.
+            const { contentType, stream } = request.body
+            return Effect.mapError(
+                Effect.map(Stream.runCollect(stream), (chunks) => ({
+                    body: concatChunks(chunks as ReadonlyArray<Uint8Array>),
+                    contentType,
+                })),
+                (cause) =>
+                    new HttpClientError.HttpClientError({
+                        reason: new HttpClientError.EncodeError({
+                            request,
+                            description: "failed to buffer streaming request body",
+                            cause,
+                        }),
+                    }),
             )
+        }
+        case "FormData":
+            return unsupported("GodotHttpClient does not support multipart request bodies")
     }
 }
 
@@ -135,11 +168,9 @@ const toRequestHeaderLines = (
 // -----------------------------------------------------------------------------
 
 /**
- * The Godot `HTTPRequest` node buffers the whole response before emitting
- * `request_completed`, so bodies arrive as a single `Uint8Array` rather than
- * an incremental stream. There is no `TextDecoder`/`URLSearchParams` in the
- * QuickJS engine GodotJS embeds, so UTF-8 and `x-www-form-urlencoded`
- * decoding are implemented by hand below.
+ * There is no `TextDecoder`/`URLSearchParams` in the QuickJS engine GodotJS
+ * embeds, so UTF-8 and `x-www-form-urlencoded` decoding are implemented by
+ * hand below.
  */
 const decodeUtf8 = (bytes: Uint8Array): string => {
     let result = ""
@@ -206,6 +237,17 @@ const toResponseCookies = (lines: readonly string[]): Cookies.Cookies =>
             .map((line) => line.slice(line.indexOf(":") + 1).trim()),
     )
 
+const concatChunks = (chunks: ReadonlyArray<Uint8Array>): Uint8Array => {
+    const length = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
+    const result = new Uint8Array(length)
+    let offset = 0
+    for (const chunk of chunks) {
+        result.set(chunk, offset)
+        offset += chunk.byteLength
+    }
+    return result
+}
+
 class GodotClientResponse extends Inspectable.Class
     implements HttpClientResponse.HttpClientResponse, Pipeable.Pipeable {
     readonly [HttpIncomingMessage.TypeId]: typeof HttpIncomingMessage.TypeId =
@@ -216,19 +258,19 @@ class GodotClientResponse extends Inspectable.Class
     readonly request: HttpClientRequest.HttpClientRequest
     readonly status: number
     private readonly rawHeaders: readonly string[]
-    private readonly body: Uint8Array
+    private readonly bodyStream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>
 
     constructor(
         request: HttpClientRequest.HttpClientRequest,
         status: number,
         rawHeaders: readonly string[],
-        body: Uint8Array,
+        bodyStream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
     ) {
         super()
         this.request = request
         this.status = status
         this.rawHeaders = rawHeaders
-        this.body = body
+        this.bodyStream = bodyStream
     }
 
     toJSON(): unknown {
@@ -253,17 +295,22 @@ class GodotClientResponse extends Inspectable.Class
         return Option.none()
     }
 
+    /** Single-use, like a Web `ReadableStream` or Node `IncomingMessage`. */
     get stream(): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> {
-        return Stream.succeed(this.body)
+        return this.bodyStream
     }
 
+    private cachedArrayBuffer?: Effect.Effect<ArrayBuffer, HttpClientError.HttpClientError>
     get arrayBuffer(): Effect.Effect<ArrayBuffer, HttpClientError.HttpClientError> {
-        return Effect.succeed(this.body.buffer as ArrayBuffer)
+        return (this.cachedArrayBuffer ??= Effect.map(
+            Stream.runCollect(this.bodyStream),
+            (chunks) => concatChunks(chunks).buffer as ArrayBuffer,
+        ).pipe(Effect.cached, Effect.runSync))
     }
 
     private cachedText?: Effect.Effect<string, HttpClientError.HttpClientError>
     get text(): Effect.Effect<string, HttpClientError.HttpClientError> {
-        return (this.cachedText ??= Effect.sync(() => decodeUtf8(this.body)))
+        return (this.cachedText ??= Effect.map(this.arrayBuffer, (buffer) => decodeUtf8(new Uint8Array(buffer))))
     }
 
     get json(): Effect.Effect<Schema.Json, HttpClientError.HttpClientError> {
@@ -329,15 +376,6 @@ const toLines = (headers: PackedStringArray | readonly string[]): Array<string> 
     return lines
 }
 
-/**
- * Runs one request through a Godot `HTTPRequest` node.
- *
- * Follows the lifecycle from `EFFECT_PLATFORM_GODOT_FEASIBILITY.md`: the node
- * is attached on the main thread, `request_completed` resumes the Effect
- * callback exactly once, and every exit path (success, failure, or fiber
- * interruption through `signal`) disconnects the signal, cancels any request
- * still in flight, and frees the node.
- */
 interface AbortableSignal {
     readonly addEventListener: (
         type: "abort",
@@ -347,131 +385,231 @@ interface AbortableSignal {
     readonly removeEventListener: (type: "abort", listener: () => void) => void
 }
 
+/**
+ * Owns one Godot `HTTPClient` connection and its lifetime.
+ *
+ * `HTTPClient` is a plain `RefCounted`, not a `Node`, so there is no scene
+ * tree to detach from: `close()` is the entire teardown, and it doubles as
+ * the abort-signal handler so a cancelled request (whether interrupted while
+ * awaiting headers or while a caller is still draining the body stream)
+ * always releases the connection.
+ */
+class GodotConnection {
+    readonly client: GodotHTTPClient
+    private isClosed = false
+    private readonly signal: AbortableSignal
+    private readonly onAbort = () => this.close()
+
+    constructor(client: GodotHTTPClient, signal: AbortableSignal) {
+        this.client = client
+        this.signal = signal
+        signal.addEventListener("abort", this.onAbort, { once: true })
+    }
+
+    get closed(): boolean {
+        return this.isClosed
+    }
+
+    close(): void {
+        if (this.isClosed) return
+        this.isClosed = true
+        this.signal.removeEventListener("abort", this.onAbort)
+        try {
+            this.client.close()
+        } catch {
+            // Best effort; the connection may already be in a terminal state.
+        }
+    }
+}
+
+/** Polls a connection until its status leaves the given set, or fails on a terminal error status. */
+const pollUntilStatusIsNot = (
+    connection: GodotConnection,
+    request: HttpClientRequest.HttpClientRequest,
+    pollInterval: Duration.Input,
+    waitingStatuses: ReadonlySet<number>,
+): Effect.Effect<number, HttpClientError.HttpClientError> =>
+    Effect.gen(function* () {
+        while (true) {
+            connection.client.poll()
+            const status = connection.client.get_status()
+
+            const errorDescription = GODOT_STATUS_ERROR_DESCRIPTIONS[status]
+            if (errorDescription !== undefined) {
+                return yield* Effect.fail(makeTransportError(request, errorDescription, { status }))
+            }
+            if (!waitingStatuses.has(status)) return status
+
+            yield* Effect.sleep(pollInterval)
+        }
+    })
+
+/**
+ * Streams the response body by repeatedly polling and reading whatever chunk
+ * of bytes has arrived so far. The connection is closed as soon as the
+ * status leaves `STATUS_BODY` (normal completion), the status becomes an
+ * error, the accumulated size exceeds `maxBodyBytes`, or the stream itself is
+ * interrupted.
+ */
+const streamResponseBody = (
+    connection: GodotConnection,
+    request: HttpClientRequest.HttpClientRequest,
+    pollInterval: Duration.Input,
+    maxBodyBytes: number,
+): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
+    Stream.callback<Uint8Array, HttpClientError.HttpClientError>((queue) =>
+        Effect.ensuring(
+            Effect.gen(function* () {
+                let total = 0
+
+                while (true) {
+                    if (connection.closed) {
+                        return yield* Queue.fail(queue, makeTransportError(request, "Godot HTTP request aborted"))
+                    }
+
+                    connection.client.poll()
+                    const status = connection.client.get_status()
+
+                    const errorDescription = GODOT_STATUS_ERROR_DESCRIPTIONS[status]
+                    if (errorDescription !== undefined) {
+                        return yield* Queue.fail(queue, makeTransportError(request, errorDescription, { status }))
+                    }
+
+                    const chunk = toBytes(connection.client.read_response_body_chunk())
+                    if (chunk.byteLength > 0) {
+                        total += chunk.byteLength
+                        if (total > maxBodyBytes) {
+                            return yield* Queue.fail(
+                                queue,
+                                makeTransportError(request, `Godot HTTP response exceeded ${maxBodyBytes} bytes`),
+                            )
+                        }
+                        yield* Queue.offer(queue, chunk)
+                    }
+
+                    if (status !== GODOT_STATUS_BODY) return yield* Queue.end(queue)
+
+                    if (chunk.byteLength === 0) yield* Effect.sleep(pollInterval)
+                }
+            }),
+            Effect.sync(() => connection.close()),
+        ),
+    )
+
+/**
+ * Runs one request through a Godot `HTTPClient`, connecting, sending the
+ * request, and polling for the response headers. `connect_to_host`,
+ * `request`/`request_raw`, and the connecting/requesting poll loops are
+ * ordinary `Effect`s, so fiber interruption during those phases works
+ * without any manual signal plumbing; `Effect.onExit` closes the connection
+ * if that setup fails or is interrupted. Once headers arrive, the connection
+ * is either closed immediately (no body) or handed to `streamResponseBody`,
+ * which owns closing it once the body has been read.
+ */
 const runGodotRequest = (
     options: GodotHttpClientOptions,
     request: HttpClientRequest.HttpClientRequest,
-    url: { readonly toString: () => string },
+    url: {
+        readonly protocol: string
+        readonly hostname: string
+        readonly port: string
+        readonly pathname: string
+        readonly search: string
+    },
     signal: AbortableSignal,
     body: EncodedRequestBody,
     maxBodyBytes: number,
+    pollInterval: Duration.Input,
 ): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> =>
-    Effect.callback((resume) => {
-        const godotRequest = options.createRequest()
-        let settled = false
-        let inFlight = false
-        let connected = false
-
-        const cleanup = () => {
-            if (connected) {
-                godotRequest.request_completed.disconnect(callable)
-                connected = false
-            }
-            if (inFlight) {
-                godotRequest.cancel_request()
-                inFlight = false
-            }
-            godotRequest.queue_free()
-        }
-
-        const fail = (error: HttpClientError.HttpClientError) => {
-            if (settled) return
-            settled = true
-            cleanup()
-            resume(Effect.fail(error))
-        }
-
-        const onAbort = () => fail(makeTransportError(request, "Godot HTTP request aborted"))
-        signal.addEventListener("abort", onAbort, { once: true })
-
-        const callable = options.createCallable((result, status, rawHeaders, rawBody) => {
-            if (settled) return
-            inFlight = false
-
-            const responseBody = toBytes(rawBody)
-            const headerLines = toLines(rawHeaders)
-
-            if (
-                result === GODOT_RESULT_BODY_SIZE_LIMIT_EXCEEDED ||
-                responseBody.byteLength > maxBodyBytes
-            ) {
-                fail(
-                    makeTransportError(
-                        request,
-                        `Godot HTTP response exceeded ${maxBodyBytes} bytes`,
-                        { result, status },
-                    ),
-                )
-                return
-            }
-
-            if (result !== GODOT_RESULT_SUCCESS) {
-                fail(
-                    makeTransportError(
-                        request,
-                        `Godot HTTPRequest failed with result ${result}`,
-                        { result, status, headers: headerLines },
-                    ),
-                )
-                return
-            }
-
-            settled = true
-            cleanup()
-            resume(
-                Effect.succeed(
-                    new GodotClientResponse(request, status, headerLines, responseBody),
-                ),
+    Effect.gen(function* () {
+        const isHttps = url.protocol === "https:"
+        const tlsOptions = isHttps ? (options.createTlsOptions?.() ?? undefined) : undefined
+        if (isHttps && tlsOptions === undefined) {
+            return yield* Effect.fail(
+                makeTransportError(request, "HTTPS requests require createTlsOptions to return a TLSOptions instance"),
             )
-        })
-
-        options.parent.add_child(godotRequest)
-        godotRequest.body_size_limit = maxBodyBytes
-        if (options.timeoutSeconds !== undefined) godotRequest.timeout = options.timeoutSeconds
-        if (options.maxRedirects !== undefined) godotRequest.max_redirects = options.maxRedirects
-        if (options.acceptGzip !== undefined) godotRequest.accept_gzip = options.acceptGzip
-
-        godotRequest.request_completed.connect(callable)
-        connected = true
-
-        const headers = toRequestHeaderLines(request, body)
-        const method = GODOT_METHOD[request.method]
-        inFlight = true
-        const code =
-            body.body === undefined || typeof body.body === "string"
-                ? godotRequest.request(url.toString(), headers, method, body.body)
-                : godotRequest.request_raw(
-                      url.toString(),
-                      headers,
-                      method,
-                      Array.from(body.body),
-                  )
-
-        if (code !== GODOT_OK) {
-            fail(makeTransportError(request, `Godot HTTPRequest could not start (error ${code})`, { code }))
         }
 
-        return Effect.sync(() => {
-            signal.removeEventListener("abort", onAbort)
-            if (settled) return
-            settled = true
-            cleanup()
-        })
+        const connection = new GodotConnection(options.createClient(), signal)
+        if (options.readChunkSize !== undefined) {
+            connection.client.read_chunk_size = options.readChunkSize
+        }
+
+        return yield* Effect.onExit(
+            Effect.gen(function* () {
+                const port = url.port !== "" ? Number(url.port) : isHttps ? 443 : 80
+                const connectCode = connection.client.connect_to_host(url.hostname, port, tlsOptions)
+                if (connectCode !== GODOT_OK) {
+                    return yield* Effect.fail(
+                        makeTransportError(
+                            request,
+                            `Godot HTTPClient could not connect (error ${connectCode})`,
+                            { code: connectCode },
+                        ),
+                    )
+                }
+
+                yield* pollUntilStatusIsNot(connection, request, pollInterval, GODOT_STATUS_AWAITING_CONNECTION)
+
+                const headers = toRequestHeaderLines(request, body)
+                const method = GODOT_METHOD[request.method]
+                const target = url.pathname + url.search
+                const requestCode =
+                    body.body === undefined || typeof body.body === "string"
+                        ? connection.client.request(method, target, headers, body.body)
+                        : connection.client.request_raw(method, target, headers, Array.from(body.body))
+                if (requestCode !== GODOT_OK) {
+                    return yield* Effect.fail(
+                        makeTransportError(
+                            request,
+                            `Godot HTTPClient could not send request (error ${requestCode})`,
+                            { code: requestCode },
+                        ),
+                    )
+                }
+
+                const statusAfterRequest = yield* pollUntilStatusIsNot(
+                    connection,
+                    request,
+                    pollInterval,
+                    new Set([GODOT_STATUS_REQUESTING]),
+                )
+
+                if (!connection.client.has_response()) {
+                    return yield* Effect.fail(makeTransportError(request, "Godot HTTPClient request has no response"))
+                }
+
+                const status = connection.client.get_response_code()
+                const responseHeaders = toLines(connection.client.get_response_headers())
+
+                if (statusAfterRequest !== GODOT_STATUS_BODY) {
+                    connection.close()
+                    return new GodotClientResponse(request, status, responseHeaders, Stream.empty)
+                }
+
+                return new GodotClientResponse(
+                    request,
+                    status,
+                    responseHeaders,
+                    streamResponseBody(connection, request, pollInterval, maxBodyBytes),
+                )
+            }),
+            (exit) => (Exit.isFailure(exit) ? Effect.sync(() => connection.close()) : Effect.void),
+        )
     })
 
-/** Constructs an Effect `HttpClient` backed by Godot `HTTPRequest` nodes. */
+/** Constructs an Effect `HttpClient` backed by a Godot `HTTPClient` per request. */
 export const make = (options: GodotHttpClientOptions): HttpClient.HttpClient => {
     const maxBodyBytes = normalizeMaxBodyBytes(options.maxBodyBytes)
+    const pollInterval = options.pollInterval ?? DEFAULT_POLL_INTERVAL
 
     return HttpClient.make((request, url, signal) =>
         Effect.flatMap(encodeRequestBody(request), (body) =>
-            runGodotRequest(options, request, url, signal, body, maxBodyBytes),
+            runGodotRequest(options, request, url, signal, body, maxBodyBytes, pollInterval),
         ),
     )
 }
 
-/** Provides the current Effect `HttpClient` service using Godot `HTTPRequest`. */
+/** Provides the current Effect `HttpClient` service using Godot `HTTPClient`. */
 export const layer = (options: GodotHttpClientOptions): Layer.Layer<HttpClient.HttpClient> =>
     Layer.effect(HttpClient.HttpClient, Effect.sync(() => make(options)))
-
-/** Alias for `layer`, matching this package's `<Thing>Layer` naming convention. */
-export const GodotHttpClientLayer = layer
