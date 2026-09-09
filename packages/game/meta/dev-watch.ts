@@ -43,7 +43,7 @@ const program = Effect.gen(function* () {
         const handle = yield* spawner.spawn(
             ChildProcess.make(
                 ROLLDOWN_BIN,
-                ["-c", "config/rolldown.config.ts", "--watch"],
+                ["-c", "meta/rolldown.config.ts", "--watch"],
                 {
                     stdin: "inherit",
                     stdout: "inherit",

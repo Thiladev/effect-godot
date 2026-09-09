@@ -1,5 +1,5 @@
 {
-  "name": "@codename-painless/game",
+  "name": "@effect-godot/game",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -14,7 +14,14 @@
     "typegen": "godot-bin --project . run -- --headless --editor --generate-types --path ."
   },
   "dependencies": {
-    "effect": "^4.0.0-rc.112"
+    "@formatjs/intl-datetimeformat": "^7.6.1",
+    "@formatjs/intl-getcanonicallocales": "^3.2.11",
+    "@formatjs/intl-listformat": "^8.3.13",
+    "@formatjs/intl-locale": "^5.3.10",
+    "@formatjs/intl-numberformat": "^9.4.0",
+    "@formatjs/intl-pluralrules": "^6.3.13",
+    "effect": "^4.0.0-rc.112",
+    "effect-godot": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform-bun": "^4.0.0-rc.112",
