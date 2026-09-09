@@ -1,4 +1,4 @@
-import { Node } from "godot"
+import { HTTPClient, Node, TLSOptions } from "godot"
 import { DateTime, Effect, Fiber, Schema, Stream } from "effect"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import { GodotRuntime, GodotHttpClient } from "effect-godot"
@@ -60,6 +60,24 @@ export default class EffectProbe extends Node {
                 if (typeof GodotHttpClient.make !== "function") {
                     throw new Error("GodotHttpClient.make is not a function")
                 }
+            }),
+        )
+
+        await this.check("Godot HTTPClient/TLSOptions construction (real engine classes)", () =>
+            Effect.sync(() => {
+                const client = new HTTPClient()
+                if (typeof client.connect_to_host !== "function") {
+                    throw new Error("HTTPClient missing connect_to_host")
+                }
+                if (TLSOptions.client() === null) throw new Error("TLSOptions.client() returned null")
+            }),
+        )
+
+        await this.check("GodotHttpClient.make() with no options (real HTTPClient/TLSOptions defaults)", () =>
+            Effect.sync(() => {
+                // No createClient/createTlsOptions supplied — this only works
+                // if the defaults construct real Godot classes themselves.
+                GodotHttpClient.make({})
             }),
         )
 

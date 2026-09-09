@@ -9,8 +9,8 @@ import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as HttpIncomingMessage from "effect/unstable/http/HttpIncomingMessage"
 import * as HttpMethod from "effect/unstable/http/HttpMethod"
 import * as UrlParams from "effect/unstable/http/UrlParams"
-import type { HTTPClient as GodotHTTPClient, PackedByteArray, PackedStringArray, TLSOptions } from "godot"
-
+import { HTTPClient as GodotHTTPClient, TLSOptions } from "godot"
+import type { PackedByteArray, PackedStringArray } from "godot"
 
 /** The default maximum accumulated response body size. */
 export const DEFAULT_MAX_BODY_BYTES = 1024 * 1024
@@ -21,17 +21,18 @@ export const DEFAULT_POLL_INTERVAL: Duration.Input = Duration.millis(4)
 /**
  * Dependencies needed to construct the Effect `HttpClient` layer.
  *
- * `createClient` is a factory (not a shared instance) so this module remains
- * safe to import in Bun/Node tests, where the runtime-only `godot` module is
- * not available, and so every request gets its own connection.
+ * `createClient`/`createTlsOptions` default to a real Godot
+ * `HTTPClient`/`TLSOptions.client()`; override either only if you need a
+ * fake (e.g. for a test) or non-default TLS trust configuration.
+ * `createClient` is a factory rather than a shared instance so every request
+ * gets its own connection.
  */
 export interface GodotHttpClientOptions {
-    readonly createClient: () => GodotHTTPClient
+    readonly createClient?: () => GodotHTTPClient
     /**
-     * Required for `https://` requests. Godot's `HTTPClient.connect_to_host`
-     * only negotiates TLS when given a `TLSOptions` instance (typically
-     * `TLSOptions.client()`), so this is a factory rather than a plain
-     * boolean to avoid silently downgrading to plaintext.
+     * Godot's `HTTPClient.connect_to_host` only negotiates TLS when given a
+     * `TLSOptions` instance, so this defaults to `TLSOptions.client()`
+     * rather than silently downgrading `https://` requests to plaintext.
      */
     readonly createTlsOptions?: () => TLSOptions | null
     readonly maxBodyBytes?: number
@@ -523,14 +524,17 @@ const runGodotRequest = (
 ): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> =>
     Effect.gen(function* () {
         const isHttps = url.protocol === "https:"
-        const tlsOptions = isHttps ? (options.createTlsOptions?.() ?? undefined) : undefined
+        const tlsOptions = isHttps
+            ? ((options.createTlsOptions ?? (() => TLSOptions.client()))() ?? undefined)
+            : undefined
         if (isHttps && tlsOptions === undefined) {
             return yield* Effect.fail(
-                makeTransportError(request, "HTTPS requests require createTlsOptions to return a TLSOptions instance"),
+                makeTransportError(request, "HTTPS requires a TLSOptions instance, but none was available"),
             )
         }
 
-        const connection = new GodotConnection(options.createClient(), signal)
+        const client = (options.createClient ?? (() => new GodotHTTPClient()))()
+        const connection = new GodotConnection(client, signal)
         if (options.readChunkSize !== undefined) {
             connection.client.read_chunk_size = options.readChunkSize
         }
