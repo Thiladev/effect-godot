@@ -1,1 +1,1 @@
-export { GodotPolyfill as default } from "effect-godot"
+export { GodotPolyfill as default } from "effect-godot/polyfill"

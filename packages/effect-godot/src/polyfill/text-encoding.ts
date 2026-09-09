@@ -1,18 +1,22 @@
-// Split out of `GodotPolyfill.ts` so it's its own `import` declaration, not
-// inline code sitting between two other imports. ES module `import`
-// declarations are hoisted and evaluated in file order *before* any of the
-// importing module's own top-level code runs, regardless of where that code
-// is written relative to the imports — so a self-install written as plain
-// statements between `import { AbortController } from "..."` and
-// `import { URL } from "whatwg-url"` actually still runs *after* `whatwg-url`
-// (and its transitive `TextEncoder` dependency) has already been evaluated.
-// Making this its own module, imported before the `whatwg-url` import in
-// `GodotPolyfill.ts`, is what actually gets the ordering right.
+// Installs `TextEncoder`/`TextDecoder` onto `globalThis` if missing.
+//
+// This is its own module — not inline code inside `polyfill/index.ts` — and
+// must be imported there *before* `./url`. ES module `import` declarations
+// are hoisted and their whole dependency graph evaluated as a group, before
+// any of the importing file's own top-level code runs, regardless of where
+// that code sits relative to the imports. So plain statements installing
+// this between two `import` lines would still run *after* `./url`'s import
+// (and its transitive `TextEncoder` dependency) has already been evaluated —
+// confirmed the hard way: `whatwg-url`'s IDNA/host processing needs
+// `TextEncoder` at `./url`'s own module-evaluation time, not just when
+// something later calls it, and inlining this didn't fix that.
+// Only another `import`, positioned earlier, actually guarantees the
+// ordering — which is why this is a separate module in the first place.
 //
 // quickjs-ng has no TextEncoder/TextDecoder either (the same story as
-// everything else `GodotPolyfill.ts` installs — `GodotHttpClient.ts` already
+// everything else this directory installs — `GodotHttpClient.ts` already
 // has its own hand-written UTF-8 decoder for exactly this reason).
-// `whatwg-url`'s dependencies need more than just UTF-8, too: `@exodus/bytes`
+// `./url`'s dependencies need more than just UTF-8, too: `@exodus/bytes`
 // (pulled in transitively) eagerly constructs both a `"utf-8"` and a
 // `"latin1"` `TextDecoder` at its own module-evaluation time — found
 // empirically as `Error: Encoding not supported. Only utf-8 is supported`
@@ -29,8 +33,8 @@
 // side effects beyond a harmless attempted self-install (guarded by
 // `this || {}` for a strict-mode/ESM context where top-level `this` is
 // `undefined`, so it patches a throwaway object rather than `globalThis`) —
-// so, same as `abort-controller`/`whatwg-url` in `GodotPolyfill.ts`, the
-// actual `globalThis` install is done here explicitly.
+// so, same as the rest of this directory, the actual `globalThis` install is
+// done here explicitly.
 import { TextDecoder, TextEncoder } from "text-encoding"
 
 if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {

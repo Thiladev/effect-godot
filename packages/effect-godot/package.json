@@ -7,7 +7,12 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./GodotHttpClient": "./src/GodotHttpClient.ts",
+    "./GodotRuntime": "./src/GodotRuntime.ts",
+    "./GodotSignal": "./src/GodotSignal.ts",
+    "./polyfill": "./src/polyfill/index.ts",
+    "./polyfill/GodotPolyfill": "./src/polyfill/GodotPolyfill.ts"
   },
   "dependencies": {
     "@formatjs/intl-datetimeformat": "^7.6.1",
