@@ -476,21 +476,22 @@ const streamResponseBody = (
                         return yield* Queue.fail(queue, makeTransportError(request, errorDescription, { status }))
                     }
 
-                    const chunk = toBytes(connection.client.read_response_body_chunk())
-                    if (chunk.byteLength > 0) {
-                        total += chunk.byteLength
-                        if (total > maxBodyBytes) {
-                            return yield* Queue.fail(
-                                queue,
-                                makeTransportError(request, `Godot HTTP response exceeded ${maxBodyBytes} bytes`),
-                            )
-                        }
-                        yield* Queue.offer(queue, chunk)
-                    }
-
                     if (status !== GODOT_STATUS_BODY) return yield* Queue.end(queue)
 
-                    if (chunk.byteLength === 0) yield* Effect.sleep(pollInterval)
+                    const chunk = toBytes(connection.client.read_response_body_chunk())
+                    if (chunk.byteLength === 0) {
+                        yield* Effect.sleep(pollInterval)
+                        continue
+                    }
+
+                    total += chunk.byteLength
+                    if (total > maxBodyBytes) {
+                        return yield* Queue.fail(
+                            queue,
+                            makeTransportError(request, `Godot HTTP response exceeded ${maxBodyBytes} bytes`),
+                        )
+                    }
+                    yield* Queue.offer(queue, chunk)
                 }
             }),
             Effect.sync(() => connection.close()),
