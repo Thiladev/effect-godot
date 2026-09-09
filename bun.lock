@@ -18,8 +18,13 @@
     "packages/game": {
       "name": "@effect-godot/game",
       "version": "0.0.0",
+      "dependencies": {
+        "effect": "^4.0.0-rc.112",
+        "effect-godot": "workspace:*",
+      },
       "devDependencies": {
         "@effect-godot/godot-bin": "workspace:*",
+        "typescript": "^7.0.2",
       },
     },
     "packages/godot-bin": {

@@ -12,10 +12,12 @@ config_version=5
 
 config/name="Example"
 config/features=PackedStringArray("4.6")
+run/main_scene="res://src/Main.tscn"
 
 [autoload]
 
 McpBridgeGame="*res://src/mcp_bridge_game.gd"
+EffectProbe="*res://src/effect_probe.ts"
 
 [editor_plugins]
 

@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "CommonJS",
+        "rootDir": "./",
+        "outDir": ".godot/GodotJS",
+        "typeRoots": ["./node_modules/@types", "./typings"],
+        "resolveJsonModule": true,
+        "sourceMap": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "noEmitOnError": false
+    },
+    "include": ["src", "typings"]
+}
