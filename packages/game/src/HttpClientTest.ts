@@ -1,7 +1,7 @@
-import { Console, Effect } from "effect"
+import { Console, Effect, Inspectable } from "effect"
 import { GodotHttpClient } from "effect-godot"
 import { HttpClient } from "effect/unstable/http"
-import { Control } from "godot"
+import { Control, float64 } from "godot"
 
 
 export default class HttpClientTest extends Control {
@@ -10,9 +10,13 @@ export default class HttpClientTest extends Control {
         console.log("Querying...")
         await HttpClient.get("https://jsonplaceholder.typicode.com/posts/1").pipe(
             Effect.flatMap(res => res.json),
-            Effect.flatMap(Console.log),
-            Effect.provide(GodotHttpClient.layer({})),
+            Effect.flatMap(v => Console.log(Inspectable.toStringUnknown(v))),
+            Effect.provide(GodotHttpClient.layer),
             Effect.runPromise,
         )
+    }
+
+    _process(delta: float64): void {
+
     }
 }

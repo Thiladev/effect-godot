@@ -174,7 +174,7 @@ export default class EffectProbe extends Node {
         )
 
         console.log("[EffectProbe] done")
-        this.get_tree()?.quit()
+        // this.get_tree()?.quit()
     }
 
     private async check(name: string, program: () => Effect.Effect<void, unknown>) {

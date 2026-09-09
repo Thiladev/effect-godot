@@ -603,7 +603,7 @@ const runGodotRequest = (
     })
 
 /** Constructs an Effect `HttpClient` backed by a Godot `HTTPClient` per request. */
-export const make = (options: GodotHttpClientOptions): HttpClient.HttpClient => {
+export const make = (options: GodotHttpClientOptions = {}): HttpClient.HttpClient => {
     const maxBodyBytes = normalizeMaxBodyBytes(options.maxBodyBytes)
     const pollInterval = options.pollInterval ?? DEFAULT_POLL_INTERVAL
 
@@ -614,6 +614,9 @@ export const make = (options: GodotHttpClientOptions): HttpClient.HttpClient => 
     )
 }
 
-/** Provides the current Effect `HttpClient` service using Godot `HTTPClient`. */
-export const layer = (options: GodotHttpClientOptions): Layer.Layer<HttpClient.HttpClient> =>
-    Layer.effect(HttpClient.HttpClient, Effect.sync(() => make(options)))
+/** Provides the current Effect `HttpClient` service using Godot `HTTPClient`, with the given options. */
+export const layerWithOptions = (options: GodotHttpClientOptions): Layer.Layer<HttpClient.HttpClient> =>
+    Layer.sync(HttpClient.HttpClient, () => make(options))
+
+/** Provides the current Effect `HttpClient` service using Godot `HTTPClient`, with every default. */
+export const layer: Layer.Layer<HttpClient.HttpClient> = Layer.sync(HttpClient.HttpClient, () => make())
