@@ -12,6 +12,10 @@
   "files": ["dist"],
   "exports": {
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./GodotConfig": {
+      "types": "./dist/GodotConfig.d.ts",
+      "default": "./dist/GodotConfig.js"
+    },
     "./GodotConnectionPool": {
       "types": "./dist/GodotConnectionPool.d.ts",
       "default": "./dist/GodotConnectionPool.js"
