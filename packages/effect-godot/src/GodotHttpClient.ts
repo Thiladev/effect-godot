@@ -2,7 +2,7 @@ import { Array, Effect, Exit, Inspectable, Layer, Option, Pipeable, Queue, Ref, 
 import { Cookies, Headers, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, HttpIncomingMessage, HttpMethod, UrlParams } from "effect/unstable/http"
 import { Callable, Engine, HTTPClient as GodotHTTPClient, TLSOptions } from "godot"
 import type { PackedByteArray, PackedStringArray, SceneTree } from "godot"
-import * as GodotConnectionPool from "./GodotConnectionPool"
+import * as GodotConnectionPool from "./GodotConnectionPool.js"
 
 
 const textDecoder = new TextDecoder()

@@ -1,3 +1,3 @@
-export * as GodotConnectionPool from "./GodotConnectionPool"
-export * as GodotHttpClient from "./GodotHttpClient"
-export * as GodotRuntime from "./GodotRuntime"
+export * as GodotConnectionPool from "./GodotConnectionPool.js"
+export * as GodotHttpClient from "./GodotHttpClient.js"
+export * as GodotRuntime from "./GodotRuntime.js"

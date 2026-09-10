@@ -3,15 +3,31 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "test": "bun test"
   },
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
   "exports": {
-    ".": "./src/index.ts",
-    "./GodotConnectionPool": "./src/GodotConnectionPool.ts",
-    "./GodotHttpClient": "./src/GodotHttpClient.ts",
-    "./GodotRuntime": "./src/GodotRuntime.ts",
-    "./polyfill-autoload": "./src/polyfill-autoload/index.ts"
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./GodotConnectionPool": {
+      "types": "./dist/GodotConnectionPool.d.ts",
+      "default": "./dist/GodotConnectionPool.js"
+    },
+    "./GodotHttpClient": {
+      "types": "./dist/GodotHttpClient.d.ts",
+      "default": "./dist/GodotHttpClient.js"
+    },
+    "./GodotRuntime": {
+      "types": "./dist/GodotRuntime.d.ts",
+      "default": "./dist/GodotRuntime.js"
+    },
+    "./polyfill-autoload": {
+      "types": "./dist/polyfill-autoload/index.d.ts",
+      "default": "./dist/polyfill-autoload/index.js"
+    }
   },
   "dependencies": {
     "@formatjs/intl-datetimeformat": "^7.6.1",

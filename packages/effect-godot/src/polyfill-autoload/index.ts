@@ -1,10 +1,11 @@
 import { Node } from "godot"
 
-import "./abort-controller"
+import "./abort-controller.js"
 // text-encoding must come before url — see text-encoding.ts.
-import "./text-encoding"
-import "./url"
-import "./intl"
+import "./text-encoding.js"
+import "./url.js"
+import "./intl.js"
+
 
 /**
  * Installs `Intl`, `AbortController`, `URL`/`URLSearchParams`, and
