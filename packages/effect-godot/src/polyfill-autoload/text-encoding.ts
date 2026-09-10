@@ -1,6 +1,6 @@
 // Installs `TextEncoder`/`TextDecoder` onto `globalThis` if missing.
 //
-// This is its own module — not inline code inside `polyfill/index.ts` — and
+// This is its own module — not inline code inside `polyfill-autoload/index.ts` — and
 // must be imported there *before* `./url`. ES module `import` declarations
 // are hoisted and their whole dependency graph evaluated as a group, before
 // any of the importing file's own top-level code runs, regardless of where

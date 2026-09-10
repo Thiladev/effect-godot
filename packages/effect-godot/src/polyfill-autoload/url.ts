@@ -1,5 +1,5 @@
 // Installs `URL`/`URLSearchParams` onto `globalThis` if missing. Must be
-// imported *after* `./text-encoding` in `polyfill/index.ts` — see that
+// imported *after* `./text-encoding` in `polyfill-autoload/index.ts` — see that
 // module's comment for why the ordering between sibling imports matters
 // here specifically.
 //

@@ -5,6 +5,8 @@ import type { PackedByteArray, PackedStringArray, SceneTree } from "godot"
 import * as GodotConnectionPool from "./GodotConnectionPool"
 
 
+const textDecoder = new TextDecoder()
+
 /** The default maximum accumulated response body size. */
 export const DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 
@@ -164,16 +166,6 @@ const toRequestHeaderLines = (
 // -----------------------------------------------------------------------------
 // response decoding
 // -----------------------------------------------------------------------------
-
-// `TextDecoder` and `URLSearchParams` aren't implemented by quickjs-ng, but
-// `GodotPolyfill` installs both globally (see `polyfill/text-encoding.ts` and
-// `polyfill/url.ts`) — same assumption the rest of `effect` itself makes
-// (e.g. `HttpClientResponse.text` also just calls `new TextDecoder()`), so
-// this uses them directly rather than a hand-rolled decoder that's one
-// subtle bug away from disagreeing with the real UTF-8/`x-www-form-urlencoded`
-// specs. Requires `GodotPolyfill` to have run first, same as everything else
-// in this module that touches `URL`/`AbortController`/`Intl`.
-const textDecoder = new TextDecoder()
 
 const decodeUrlEncoded = (text: string): UrlParams.UrlParams => UrlParams.fromInput(new URLSearchParams(text))
 
