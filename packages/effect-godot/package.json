@@ -8,9 +8,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./GodotConnectionPool": "./src/GodotConnectionPool.ts",
     "./GodotHttpClient": "./src/GodotHttpClient.ts",
     "./GodotRuntime": "./src/GodotRuntime.ts",
-    "./GodotSignal": "./src/GodotSignal.ts",
     "./polyfill": "./src/polyfill/index.ts",
     "./polyfill/GodotPolyfill": "./src/polyfill/GodotPolyfill.ts"
   },

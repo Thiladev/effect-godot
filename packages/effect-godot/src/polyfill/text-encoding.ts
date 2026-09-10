@@ -14,9 +14,8 @@
 // ordering — which is why this is a separate module in the first place.
 //
 // quickjs-ng has no TextEncoder/TextDecoder either (the same story as
-// everything else this directory installs — `GodotHttpClient.ts` already
-// has its own hand-written UTF-8 decoder for exactly this reason).
-// `./url`'s dependencies need more than just UTF-8, too: `@exodus/bytes`
+// everything else this directory installs). `./url`'s dependencies need
+// more than just UTF-8, too: `@exodus/bytes`
 // (pulled in transitively) eagerly constructs both a `"utf-8"` and a
 // `"latin1"` `TextDecoder` at its own module-evaluation time — found
 // empirically as `Error: Encoding not supported. Only utf-8 is supported`
