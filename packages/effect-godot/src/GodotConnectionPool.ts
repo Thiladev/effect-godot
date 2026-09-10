@@ -1,6 +1,7 @@
 import { Array as Arr, Context, Effect, Layer, pipe, Ref } from "effect"
 import type { HTTPClient as GodotHTTPClient } from "godot"
 
+
 /**
  * Reuses connected `HTTPClient` instances across requests to the same host,
  * instead of closing and recreating one per request. Keyed by

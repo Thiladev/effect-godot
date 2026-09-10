@@ -11,8 +11,7 @@
     "./GodotConnectionPool": "./src/GodotConnectionPool.ts",
     "./GodotHttpClient": "./src/GodotHttpClient.ts",
     "./GodotRuntime": "./src/GodotRuntime.ts",
-    "./polyfill": "./src/polyfill/index.ts",
-    "./polyfill/GodotPolyfill": "./src/polyfill/GodotPolyfill.ts"
+    "./polyfill": "./src/polyfill/index.ts"
   },
   "dependencies": {
     "@formatjs/intl-datetimeformat": "^7.6.1",
