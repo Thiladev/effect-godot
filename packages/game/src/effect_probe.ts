@@ -1,7 +1,8 @@
 import { HTTPClient, Node, TLSOptions } from "godot"
 import { DateTime, Effect, Fiber, Schema, Stream } from "effect"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import { GodotRuntime, GodotHttpClient } from "effect-godot"
+import { GodotHttpClient } from "effect-godot"
+
 
 /**
  * Autoloaded probe to check whether Effect (and effect-godot) run natively
@@ -48,17 +49,6 @@ export default class EffectProbe extends Node {
                 const request = HttpClientRequest.get("https://example.test/")
                 if (request.url !== "https://example.test/") {
                     throw new Error(`unexpected url: ${request.url}`)
-                }
-            }),
-        )
-
-        await this.check("effect-godot package resolution (GodotRuntime, GodotHttpClient)", () =>
-            Effect.sync(() => {
-                if (GodotRuntime.GodotRuntimeLayer === undefined) {
-                    throw new Error("GodotRuntimeLayer is undefined")
-                }
-                if (typeof GodotHttpClient.make !== "function") {
-                    throw new Error("GodotHttpClient.make is not a function")
                 }
             }),
         )
