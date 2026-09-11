@@ -20,6 +20,10 @@
       "types": "./dist/GodotConnectionPool.d.ts",
       "default": "./dist/GodotConnectionPool.js"
     },
+    "./GodotCrypto": {
+      "types": "./dist/GodotCrypto.d.ts",
+      "default": "./dist/GodotCrypto.js"
+    },
     "./GodotHttpClient": {
       "types": "./dist/GodotHttpClient.d.ts",
       "default": "./dist/GodotHttpClient.js"
@@ -27,6 +31,10 @@
     "./GodotRuntime": {
       "types": "./dist/GodotRuntime.d.ts",
       "default": "./dist/GodotRuntime.js"
+    },
+    "./RuntimeNode": {
+      "types": "./dist/RuntimeNode.d.ts",
+      "default": "./dist/RuntimeNode.js"
     },
     "./polyfill-autoload": {
       "types": "./dist/polyfill-autoload/index.d.ts",
