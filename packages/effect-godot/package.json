@@ -28,10 +28,6 @@
       "types": "./dist/GodotHttpClient.d.ts",
       "default": "./dist/GodotHttpClient.js"
     },
-    "./GodotRuntime": {
-      "types": "./dist/GodotRuntime.d.ts",
-      "default": "./dist/GodotRuntime.js"
-    },
     "./RuntimeNode": {
       "types": "./dist/RuntimeNode.d.ts",
       "default": "./dist/RuntimeNode.js"
