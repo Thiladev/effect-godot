@@ -61,7 +61,7 @@ export const RuntimeNode = <R, E>(
 
     readonly runtime = ManagedRuntime.make(layer)
 
-    async _ready(): Promise<void> {
+    async _enter_tree(): Promise<void> {
         this.add_to_group(X.group)
         await this.runtime.context()
     }

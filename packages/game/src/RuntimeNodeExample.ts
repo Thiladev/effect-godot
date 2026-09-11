@@ -13,9 +13,8 @@ const GreeterLive = Layer.succeed(Greeter, {
 })
 
 /**
- * Owns the `ManagedRuntime` for `Greeter`. Register this script as an
- * autoload — autoloads `_ready` before the main scene, so by the time any
- * `EffectfulNode` built from `GreeterRuntime` runs its own `_ready`, this
- * node has already registered itself in `RuntimeNode`'s node group.
+ * Owns the `ManagedRuntime` for `Greeter`. Attach this script to any node in
+ * the scene — `EffectfulNode` descendants built from `GreeterRuntime` find
+ * it regardless of where either node sits in the tree.
  */
 export default class GreeterRuntime extends RuntimeNode.RuntimeNode(GreeterLive) {}
