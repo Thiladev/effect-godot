@@ -1,8 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/intl_consumer_probe.ts" id="1_intl"]
+[ext_resource type="PackedScene" path="res://src/RuntimeNodeExample.tscn" id="2_greeter"]
 
 [node name="Main" type="Node"]
 
 [node name="IntlConsumerProbe" type="Node" parent="."]
 script = ExtResource("1_intl")
+
+[node name="GreeterLabel" parent="." instance=ExtResource("2_greeter")]

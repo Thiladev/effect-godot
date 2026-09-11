@@ -5,14 +5,14 @@ import * as GodotCrypto from "./GodotCrypto.js"
 
 type NodeClass = typeof Node
 
-export interface RuntimeNodeClass<R, E> extends NodeClass {
+export type RuntimeNodeClass<R, E> = {
     new (_: never): RuntimeNode<R, E>
 
     readonly group: string
     readonly EffectfulNode: <T extends new (...args: any[]) => Node>(
         class_: T
     ) => EffectfulNodeClass<T, R, E>
-}
+} & Omit<NodeClass, "prototype">
 
 /** The shape `RunEffect` looks for once it's found a candidate node by group. */
 export interface RuntimeNode<R, E> extends Node {
