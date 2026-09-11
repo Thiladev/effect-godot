@@ -1,5 +1,5 @@
-import { Effect, Fiber, ManagedRuntime, type Layer } from "effect"
-import { Node } from "godot"
+import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
+import { Control, Node } from "godot"
 import * as GodotCrypto from "./GodotCrypto.js"
 
 
@@ -9,7 +9,9 @@ export interface RuntimeNodeClass<R, E> extends NodeClass {
     new (_: never): RuntimeNode<R, E>
 
     readonly group: string
-    readonly EffectfulNode: <T extends new (...args: any[]) => Node>(class_: T) => T & EffectfulNodeClass<R, E>
+    readonly EffectfulNode: <T extends new (...args: any[]) => Node>(
+        class_: T
+    ) => EffectfulNodeClass<T, R, E>
 }
 
 /** The shape `RunEffect` looks for once it's found a candidate node by group. */
@@ -34,7 +36,7 @@ export const RuntimeNode = <R, E>(
 
     static readonly EffectfulNode = <T extends new (...args: any[]) => Node>(
         class_: T
-    ): T & EffectfulNodeClass<R, E> => class extends class_ {
+    ) => (class extends class_ {
         runtimeNode!: RuntimeNode<R, E>
 
         readonly runSync: <A, E2>(effect: Effect.Effect<A, E2, R>) => A
@@ -55,7 +57,7 @@ export const RuntimeNode = <R, E>(
                 throw new Error(`EffectfulNode: no RuntimeNode found in group "${X.group}"`)
             this.runtimeNode = found
         }
-    }
+    } as unknown as EffectfulNodeClass<T, R, E>)
 
     readonly runtime = ManagedRuntime.make(layer)
 
@@ -70,9 +72,9 @@ export const RuntimeNode = <R, E>(
 }
 
 
-export interface EffectfulNodeClass<R, E> {
-    new (_: never): EffectfulNode<R, E>
-}
+export type EffectfulNodeClass<T extends new (...args: any[]) => Node, R, E> = {
+    new (...args: ConstructorParameters<T>): InstanceType<T> & EffectfulNode<R, E>
+} & Omit<T, "prototype">
 
 export interface EffectfulNode<R, E> {
     readonly runtimeNode: RuntimeNode<R, E>
@@ -80,4 +82,13 @@ export interface EffectfulNode<R, E> {
     readonly runSync: <A, E2>(effect: Effect.Effect<A, E2, R>) => A
     readonly runPromise: <A, E2>(effect: Effect.Effect<A, E2, R>, options?: Effect.RunOptions | undefined) => Promise<A>
     readonly runFork: <A, E2>(effect: Effect.Effect<A, E2, R>, options?: Effect.RunOptions | undefined) => Fiber.Fiber<A, E2 | E>
+}
+
+
+const MyRuntime = RuntimeNode(GodotCrypto.layer)
+class MyNode extends MyRuntime.EffectfulNode(Control) {
+    _ready(): void {
+        super._ready()
+        this.runSync(Effect.log("issou"))
+    }
 }
