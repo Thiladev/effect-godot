@@ -9,7 +9,7 @@ export interface RuntimeNodeClass<R, E> extends NodeClass {
     new (_: never): RuntimeNode<R, E>
 
     readonly group: string
-    readonly EffectfulNode: <T extends NodeClass>(class_: T) => T & EffectfulNodeClass<R, E>
+    readonly EffectfulNode: <T extends new (...args: any[]) => Node>(class_: T) => T & EffectfulNodeClass<R, E>
 }
 
 /** The shape `RunEffect` looks for once it's found a candidate node by group. */
@@ -32,7 +32,7 @@ export const RuntimeNode = <R, E>(
 ): RuntimeNodeClass<R, E> => class X extends Node {
     static readonly group = `effect-godot/RuntimeNode#${Effect.runSync(GodotCrypto.crypto.randomUUIDv4)}`
 
-    static readonly EffectfulNode = <T extends NodeClass>(
+    static readonly EffectfulNode = <T extends new (...args: any[]) => Node>(
         class_: T
     ): T & EffectfulNodeClass<R, E> => class extends class_ {
         runtimeNode!: RuntimeNode<R, E>
