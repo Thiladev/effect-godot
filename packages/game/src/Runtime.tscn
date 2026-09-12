@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c424e4lt4xfmd"]
+
+[ext_resource type="Script" uid="uid://b6reu1ntks75k" path="res://src/Runtime.ts" id="1_tlnui"]
+
+[node name="Runtime" type="Node" unique_id=1114072352]
+script = ExtResource("1_tlnui")
