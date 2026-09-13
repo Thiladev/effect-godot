@@ -1,12 +1,12 @@
 # effect-godot
 
-Effect bindings for [GodotJS](https://github.com/godotjs/GodotJS), Godot's QuickJS-based JavaScript runtime.
+(Very) experimental Effect bindings for [GodotJS](https://github.com/godotjs/GodotJS), a QuickJS/V8-based JavaScript runtime for Godot.
 
 ## Quick setup
 
 Install `effect` and `effect-godot`, then bundle your TypeScript scripts to CommonJS before Godot loads them. GodotJS loads CommonJS scripts and provides the `godot` module at runtime; `effect` itself is ESM-only, so use a bundler such as Rolldown or esbuild rather than plain `tsc`.
 
-GodotJS also needs the package polyfills. Add this as the first JavaScript autoload:
+GodotJS also needs polyfills. Add this as the first JavaScript autoload:
 
 ```ts
 // src/GodotPolyfill.ts
@@ -36,11 +36,11 @@ export class Greeter extends Context.Service<
   { readonly greet: (name: string) => Effect.Effect<string> }
 >()("game/Greeter") {}
 
-const GameLive = Layer.succeed(Greeter, {
+const layer = Layer.succeed(Greeter, {
   greet: (name) => Effect.succeed(`Hello, ${name}!`),
 })
 
-export default class GameRuntime extends RuntimeNode.RuntimeNode(GameLive) {}
+export default class GameRuntime extends RuntimeNode.RuntimeNode(layer) {}
 ```
 
 Attach `GameRuntime` to a node in the scene. The runtime node should be an ancestor of nodes that use its services:
@@ -50,28 +50,9 @@ GameRuntime (Node, GameRuntime.ts)
 └── GreeterLabel (Label, GreeterLabel.ts)
 ```
 
-Use the runtime directly through `this.runtime` when the script is attached to the runtime node itself:
-
-```ts
-import { Effect } from "effect"
-import GameRuntime, { Greeter } from "./GameRuntime.js"
-
-export default class Game extends GameRuntime {
-  _ready(): void {
-    void this.runtime.runPromise(
-      Greeter.use((greeter) => greeter.greet("Godot")).pipe(
-        Effect.tap((message) => Effect.sync(() => console.log(message))),
-      ),
-    )
-  }
-}
-```
-
-`runtime` is a `ManagedRuntime`. Its main operations are `runSync`, `runPromise`, and `runFork`. Prefer `runFork` for work that should continue in the background; it will be interrupted automatically when the `RuntimeNode` leaves the tree.
-
 ## EffectfulNode
 
-For ordinary Godot nodes, use the runtime class's `EffectfulNode` trait. It preserves the base node class and adds:
+To use Effect within ordinary Godot nodes, use the runtime class's `EffectfulNode` trait. It preserves the base node class and adds:
 
 - `runtime_node`: the `RuntimeNode` found in the scene tree.
 - `runSync(effect)`: runs an Effect synchronously with the runtime's services.
@@ -85,8 +66,8 @@ import { Label } from "godot"
 import GameRuntime, { Greeter } from "./GameRuntime.js"
 
 export default class GreeterLabel extends GameRuntime.EffectfulNode(Label) {
-  _ready(): void {
-    void this.runPromise(
+  async _ready(): Promise<void> {
+    await this.runPromise(
       Greeter.use((greeter) => greeter.greet("Godot")).pipe(
         Effect.tap((message) => Effect.sync(() => { this.text = message })),
       ),
@@ -98,12 +79,6 @@ export default class GreeterLabel extends GameRuntime.EffectfulNode(Label) {
 The trait looks up the matching runtime by an internal, unique scene-tree group. A node must be in the tree after its corresponding runtime node has entered it; making the runtime an ancestor is the simplest arrangement.
 
 ## Modules
-
-The main export exposes these modules as namespaces. Each is also available as a package subpath, for example `effect-godot/GodotHttpClient`.
-
-### `RuntimeNode`
-
-Exports `RuntimeNode`, `EffectfulNode`, and their associated types. See the setup and usage sections above.
 
 ### `GodotConfig`
 
@@ -170,7 +145,3 @@ const id = Effect.runSync(GodotCrypto.crypto.randomUUIDv4)
 ```
 
 Use `GodotCrypto.layer` when an Effect requires the `Crypto.Crypto` service. Random bytes and UUIDs are supported; digest is currently not implemented.
-
-### `polyfill-autoload`
-
-The autoload installs `Intl`, `AbortController`, `URL`/`URLSearchParams`, and `TextEncoder`/`TextDecoder` on `globalThis`. It must run before other JavaScript autoloads or scripts that use those APIs.

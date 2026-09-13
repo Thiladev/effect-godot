@@ -19,13 +19,16 @@
         "@formatjs/intl-numberformat": "^9.4.0",
         "@formatjs/intl-pluralrules": "^6.3.13",
         "abort-controller": "^3.0.0",
-        "effect": "^4.0.0-rc.112",
         "text-encoding": "^0.7.0",
         "whatwg-url": "^17.1.0",
       },
       "devDependencies": {
         "@types/text-encoding": "^0.0.40",
         "@types/whatwg-url": "^13.0.0",
+        "effect": "^4.0.0-rc.112",
+      },
+      "peerDependencies": {
+        "effect": "^4.0.0-rc.112",
       },
     },
     "packages/game": {

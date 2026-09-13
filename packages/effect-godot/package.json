@@ -1,17 +1,26 @@
 {
   "name": "effect-godot",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "test": "bun test"
-  },
+  "version": "0.1.0",
   "type": "module",
-  "main": "./dist/index.js",
+  "files": [
+    "./README.md",
+    "./AGENTS.md",
+    "./src/**/*.ts",
+    "./dist/**/*.js",
+    "./dist/**/*.js.map",
+    "./dist/**/*.d.ts",
+    "./ai-docs/**/*.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "url": "git+https://github.com/Thiladev/effect-godot.git"
+  },
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./GodotConfig": {
       "types": "./dist/GodotConfig.d.ts",
       "default": "./dist/GodotConfig.js"
@@ -37,6 +46,14 @@
       "default": "./dist/polyfill-autoload/index.js"
     }
   },
+  "scripts": {
+    "lint:tsc": "tsc -b --noEmit",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "pack": "npm pack",
+    "clean:cache": "rm -rf .turbo *.tsbuildinfo",
+    "clean:dist": "rm -rf dist",
+    "clean:modules": "rm -rf node_modules"
+  },
   "dependencies": {
     "@formatjs/intl-datetimeformat": "^7.6.1",
     "@formatjs/intl-getcanonicallocales": "^3.2.11",
@@ -45,11 +62,14 @@
     "@formatjs/intl-numberformat": "^9.4.0",
     "@formatjs/intl-pluralrules": "^6.3.13",
     "abort-controller": "^3.0.0",
-    "effect": "^4.0.0-rc.112",
     "text-encoding": "^0.7.0",
     "whatwg-url": "^17.1.0"
   },
+  "peerDependencies": {
+    "effect": "^4.0.0-rc.112"
+  },
   "devDependencies": {
+    "effect": "^4.0.0-rc.112",
     "@types/text-encoding": "^0.0.40",
     "@types/whatwg-url": "^13.0.0"
   }

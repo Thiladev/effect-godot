@@ -1,9 +1,7 @@
 import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
-import { Control, Node } from "godot"
+import { Node } from "godot"
 import * as GodotCrypto from "./GodotCrypto.js"
 
-
-type NodeClass = typeof Node
 
 export type RuntimeNodeClass<R, E> = {
     new (_: never): RuntimeNode<R, E>
@@ -12,7 +10,7 @@ export type RuntimeNodeClass<R, E> = {
     readonly EffectfulNode: <T extends new (...args: any[]) => Node>(
         class_: T
     ) => EffectfulNodeClass<T, R, E>
-} & Omit<NodeClass, "prototype">
+} & Omit<typeof Node, "prototype">
 
 /** The shape `RunEffect` looks for once it's found a candidate node by group. */
 export interface RuntimeNode<R, E> extends Node {
