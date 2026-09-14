@@ -1,12 +1,14 @@
 # effect-godot
 
-(Very) experimental Effect bindings for [GodotJS](https://github.com/godotjs/GodotJS), a QuickJS/V8-based JavaScript runtime for Godot.
+Experimental Effect v4 bindings for [GodotJS](https://github.com/godotjs/GodotJS), a QuickJS/V8-based JavaScript runtime for Godot.
 
 ## Quick setup
 
-Install `effect` and `effect-godot`, then bundle your TypeScript scripts to CommonJS before Godot loads them. GodotJS loads CommonJS scripts and provides the `godot` module at runtime; `effect` itself is ESM-only, so use a bundler such as Rolldown or esbuild rather than plain `tsc`.
+Install `effect@rc` and `effect-godot`, then bundle your TypeScript scripts and your dependencies to CommonJS before Godot loads them. This is required since GodotJS can only load CommonJS scripts. Both `effect` and this library are ESM-only.
 
-GodotJS also needs polyfills. Add this as the first JavaScript autoload:
+A minimal bundler configuration should use `format: "cjs"` and keep `godot` external. See the `game` package inside this monorepo for a bundler config example using Rolldown.
+
+Both `effect` and this library also needs some polyfills to run under GodotJS. Add this as the first JavaScript autoload in your load order:
 
 ```ts
 // src/GodotPolyfill.ts
@@ -14,11 +16,10 @@ export { default } from "effect-godot/polyfill-autoload"
 ```
 
 ```ini
+# project.godot
 [autoload]
 GodotPolyfill="*res://src/GodotPolyfill.ts"
 ```
-
-The bundled output must be available under the paths referenced by your Godot scenes. A minimal bundler configuration should use `format: "cjs"` and keep `godot` external.
 
 ## RuntimeNode
 
@@ -76,8 +77,6 @@ export default class GreeterLabel extends GameRuntime.EffectfulNode(Label) {
 }
 ```
 
-The trait looks up the matching runtime by an internal, unique scene-tree group. A node must be in the tree after its corresponding runtime node has entered it; making the runtime an ancestor is the simplest arrangement.
-
 ## Modules
 
 ### `GodotConfig`
@@ -99,7 +98,7 @@ Use `GodotConfig.layerAdd` to use `ProjectSettings` as a fallback. `layerAddEnvi
 import { Layer } from "effect"
 import { GodotConfig } from "effect-godot"
 
-const ConfigLive = Layer.provide(
+const layer = Layer.provide(
   GodotConfig.layerAddEnvironment,
   GodotConfig.layer,
 )
@@ -112,36 +111,67 @@ Environment keys use `_` separators; ProjectSettings keys use `/` separators.
 Implements Effect's `HttpClient` using Godot's `HTTPClient`:
 
 ```ts
-import { Effect, Layer } from "effect"
-import { GodotConnectionPool, GodotHttpClient } from "effect-godot"
-import { HttpClient } from "effect/unstable/http"
+// src/Runtime.ts
+import { Layer } from "effect"
+import { GodotConnectionPool, GodotHttpClient, RuntimeNode } from "effect-godot"
 
-const HttpLive = Layer.provide(
+const layer = Layer.provide(
   GodotHttpClient.layer,
   GodotConnectionPool.layer,
 )
 
-const program = HttpClient.get("https://example.com").pipe(
-  Effect.flatMap((response) => response.json),
-  Effect.provide(HttpLive),
-)
+export default class Runtime extends RuntimeNode.RuntimeNode(layer) {}
 ```
 
-Use `GodotHttpClient.layerWithOptions(options)` to set `maxBodyBytes`, `readChunkSize`, or custom client/TLS factories. `GodotHttpClient.make(options?)` creates a plain client without a connection-pool dependency; requests use fresh connections.
+Use that runtime from a regular Godot node:
 
-### `GodotConnectionPool`
+```ts
+// src/HttpClientNode.ts
+import { Console, Effect, Inspectable } from "effect"
+import { HttpClient } from "effect/unstable/http"
+import { Node } from "godot"
+import Runtime from "./Runtime.js"
 
-`GodotConnectionPool.layer` reuses Godot `HTTPClient` connections per host and closes idle connections when its layer scope closes. Provide it to `GodotHttpClient.layer` as shown above. A `RuntimeNode` is a convenient scope owner for both layers.
+export default class HttpClientNode extends Runtime.EffectfulNode(Node) {
+  async _ready(): Promise<void> {
+    await this.runPromise(
+      HttpClient.get("https://example.com").pipe(
+        Effect.flatMap((response) => response.json),
+        Effect.flatMap((body) => Console.log(Inspectable.toStringUnknown(body))),
+      ),
+    )
+  }
+}
+```
+
+`GodotConnectionPool` is a reusable pool of Godot `HTTPClient` connections.
+
+`GodotConnectionPool` should be long-lived and shared across requests and `HttpClient` instances. Keep its layer scope alive instead of creating a new pool for each request or client. `GodotHttpClient` can however be recreated with minimal impact.
+
+Use `GodotHttpClient.layerWithOptions(options)` to set `maxBodyBytes`, `readChunkSize`.
 
 ### `GodotCrypto`
 
 Adapts Godot's `Crypto` to Effect's `Crypto.Crypto` service:
 
 ```ts
-import { Effect } from "effect"
+import { Crypto, Effect } from "effect"
 import { GodotCrypto } from "effect-godot"
+import { Node } from "godot"
 
-const id = Effect.runSync(GodotCrypto.crypto.randomUUIDv4)
+export default class CryptoNode extends Node {
+  async _ready(): Promise<void> {
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const crypto = yield* Crypto.Crypto
+        const id = yield* crypto.randomUUIDv4
+        console.log(id)
+      }).pipe(
+        Effect.provide(GodotCrypto.layer),
+      ),
+    )
+  }
+}
 ```
 
-Use `GodotCrypto.layer` when an Effect requires the `Crypto.Crypto` service. Random bytes and UUIDs are supported; digest is currently not implemented.
+Use `GodotCrypto.layer` when an Effect requires the `Crypto.Crypto` service. Random bytes and UUIDs are supported, digest is currently not implemented.
