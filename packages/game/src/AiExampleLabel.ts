@@ -1,4 +1,4 @@
-import { Effect } from "effect"
+import { Effect, Stream } from "effect"
 import { LanguageModel } from "effect/unstable/ai"
 import { Label } from "godot"
 import Runtime from "./Runtime.js"
@@ -6,12 +6,16 @@ import Runtime from "./Runtime.js"
 
 export default class AiExampleLabel extends Runtime.EffectfulNode(Label) {
     _ready(): void {
-        this.text = "Asking OpenRouter..."
+        this.text = ""
         this.runPromise(
-            LanguageModel.generateText({
+            LanguageModel.streamText({
                 prompt: "Write a haiku about the Godot game engine.",
             }).pipe(
-                Effect.tap(response => Effect.sync(() => { this.text = response.text })),
+                Stream.runForEach((part): Effect.Effect<void> =>
+                    part.type === "text-delta"
+                        ? Effect.sync(() => { this.text += part.delta })
+                        : Effect.void
+                ),
                 Effect.catch(error => Effect.sync(() => { this.text = `Error: ${String(error)}` })),
             ),
         )

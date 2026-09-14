@@ -10,7 +10,7 @@
     },
     "packages/effect-godot": {
       "name": "effect-godot",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
         "@formatjs/intl-datetimeformat": "^7.6.1",
         "@formatjs/intl-getcanonicallocales": "^3.2.11",
@@ -35,7 +35,7 @@
       "name": "@effect-godot/game",
       "version": "0.0.0",
       "dependencies": {
-        "@effect/ai-openai": "4.0.0-rc.112",
+        "@effect/ai-openrouter": "4.0.0-rc.112",
         "effect": "^4.0.0-rc.112",
         "effect-godot": "workspace:*",
       },
@@ -64,7 +64,7 @@
 
     "@effect-godot/godot-bin": ["@effect-godot/godot-bin@workspace:packages/godot-bin"],
 
-    "@effect/ai-openai": ["@effect/ai-openai@4.0.0-rc.112", "", { "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-j2X86xvgpAtNiusyESADHZn3PUzMVatE1zWXd0No2aybx/euKiVBVWZOtzq7ntJ5KvPHRBOFXTGPADdApQrwug=="],
+    "@effect/ai-openrouter": ["@effect/ai-openrouter@4.0.0-rc.112", "", { "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-wgMy6v4P5SsvMoZRcDBBozgHyQ1YujRD8U3ggYt/fkyVXvCIrh28lNEbqLKM2NLojc43kVM3hk2Fe7LKhaEqcw=="],
 
     "@effect/platform-bun": ["@effect/platform-bun@4.0.0-rc.112", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-rc.112" }, "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-Y5n2HhV/vsbrJls9ukX42RL7zqXQxISHegWFsP9njsCyDmGTnq7QYSO82rglwrLPwtTrv5dkSRTuGw4+oXxgMg=="],
 

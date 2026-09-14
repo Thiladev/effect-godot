@@ -14,7 +14,7 @@
     "typegen": "godot-bin --project . run -- --headless --editor --generate-types --path ."
   },
   "dependencies": {
-    "@effect/ai-openai": "4.0.0-rc.112",
+    "@effect/ai-openrouter": "4.0.0-rc.112",
     "effect": "^4.0.0-rc.112",
     "effect-godot": "workspace:*"
   },
