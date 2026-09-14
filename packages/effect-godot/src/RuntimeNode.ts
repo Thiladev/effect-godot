@@ -1,7 +1,13 @@
-import { Effect, Fiber, Layer, ManagedRuntime } from "effect"
+import { Effect, Fiber, Layer, ManagedRuntime, Predicate } from "effect"
 import { Node } from "godot"
 import * as GodotCrypto from "./GodotCrypto.js"
 
+
+export const RuntimeNodeTypeId: unique symbol = Symbol.for("@effect-godot/RuntimeNode/RuntimeNode")
+export type RuntimeNodeTypeId = typeof RuntimeNodeTypeId
+
+export const EffectfulNodeTypeId: unique symbol = Symbol.for("@effect-godot/RuntimeNode/EffectfulNode")
+export type EffectfulNodeTypeId = typeof EffectfulNodeTypeId
 
 export type RuntimeNodeClass<R, E> = {
     new (_: never): RuntimeNode<R, E>
@@ -14,6 +20,7 @@ export type RuntimeNodeClass<R, E> = {
 
 /** The shape `RunEffect` looks for once it's found a candidate node by group. */
 export interface RuntimeNode<R, E> extends Node {
+    readonly [RuntimeNodeTypeId]: RuntimeNodeTypeId
     readonly runtime: ManagedRuntime.ManagedRuntime<R, E>
 }
 
@@ -30,11 +37,13 @@ export interface RuntimeNode<R, E> extends Node {
 export const RuntimeNode = <R, E>(
     layer: Layer.Layer<R, E, never>,
 ): RuntimeNodeClass<R, E> => class X extends Node {
-    static readonly group = `effect-godot/RuntimeNode#${Effect.runSync(GodotCrypto.crypto.randomUUIDv4)}`
+    readonly [RuntimeNodeTypeId]: RuntimeNodeTypeId = RuntimeNodeTypeId
+    static readonly group = `@effect-godot/RuntimeNode/RuntimeNode#${Effect.runSync(GodotCrypto.crypto.randomUUIDv4)}`
 
     static readonly EffectfulNode = <T extends new (...args: any[]) => Node>(
         class_: T
     ) => (class extends class_ {
+        readonly [EffectfulNodeTypeId]: EffectfulNodeTypeId = EffectfulNodeTypeId
         runtime_node!: RuntimeNode<R, E>
 
         readonly runSync: <A, E2>(effect: Effect.Effect<A, E2, R>) => A
@@ -69,15 +78,20 @@ export const RuntimeNode = <R, E>(
     }
 }
 
+export const isRuntimeNode = (u: unknown): u is RuntimeNode<unknown, unknown> => Predicate.hasProperty(u, RuntimeNodeTypeId)
+
 
 export type EffectfulNodeClass<T extends new (...args: any[]) => Node, R, E> = {
     new (...args: ConstructorParameters<T>): InstanceType<T> & EffectfulNode<R, E>
 } & Omit<T, "prototype">
 
 export interface EffectfulNode<R, E> {
+    readonly [EffectfulNodeTypeId]: EffectfulNodeTypeId
     readonly runtime_node: RuntimeNode<R, E>
 
     readonly runSync: <A, E2>(effect: Effect.Effect<A, E2, R>) => A
     readonly runPromise: <A, E2>(effect: Effect.Effect<A, E2, R>, options?: Effect.RunOptions | undefined) => Promise<A>
     readonly runFork: <A, E2>(effect: Effect.Effect<A, E2, R>, options?: Effect.RunOptions | undefined) => Fiber.Fiber<A, E2 | E>
 }
+
+export const isEffectfulNode = (u: unknown): u is EffectfulNode<unknown, unknown> => Predicate.hasProperty(u, EffectfulNodeTypeId)
