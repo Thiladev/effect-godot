@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "lint:tsc": "tsc --noEmit -p tsconfig.json",
     "build": "rolldown -c meta/rolldown.config.ts",
     "dev": "bun run meta/dev-watch.ts",
     "godot:fetch": "godot-bin --project . fetch",

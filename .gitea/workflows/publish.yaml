@@ -1,0 +1,36 @@
+name: Publish
+run-name: Publish
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint TypeScript
+        run: bun lint:tsc
+      # - name: Lint Biome
+      #   run: bun lint:biome
+      # - name: Test
+      #   run: bun run test
+      - name: Build
+        run: bun run build
+      - name: Publish effect-godot
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          package: packages/effect-godot
+          access: public
+          token: ${{ secrets.NPM_TOKEN }}
+          registry: https://registry.npmjs.org

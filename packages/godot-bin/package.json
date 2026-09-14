@@ -6,6 +6,9 @@
   "bin": {
     "godot-bin": "./src/cli.ts"
   },
+  "scripts": {
+    "lint:tsc": "tsc --noEmit -p tsconfig.json"
+  },
   "dependencies": {
     "@effect/platform-bun": "^4.0.0-rc.112",
     "effect": "^4.0.0-rc.112"
