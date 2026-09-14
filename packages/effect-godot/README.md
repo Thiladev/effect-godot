@@ -8,7 +8,7 @@ Install `effect@rc` and `effect-godot`, then bundle your TypeScript scripts and 
 
 A minimal bundler configuration should use `format: "cjs"` and keep `godot` external. See the `game` package inside this monorepo for a bundler config example using Rolldown.
 
-Both `effect` and this library also needs some polyfills to run under GodotJS. Add this as the first JavaScript autoload in your load order:
+Both `effect` and this library also need some polyfills to run under GodotJS. Add this as the first JavaScript autoload in your load order:
 
 ```ts
 // src/GodotPolyfill.ts
@@ -121,11 +121,7 @@ const layer = Layer.provide(
 )
 
 export default class Runtime extends RuntimeNode.RuntimeNode(layer) {}
-```
 
-Use that runtime from a regular Godot node:
-
-```ts
 // src/HttpClientNode.ts
 import { Console, Effect, Inspectable } from "effect"
 import { HttpClient } from "effect/unstable/http"
@@ -144,9 +140,7 @@ export default class HttpClientNode extends Runtime.EffectfulNode(Node) {
 }
 ```
 
-`GodotConnectionPool` is a reusable pool of Godot `HTTPClient` connections.
-
-`GodotConnectionPool` should be long-lived and shared across requests and `HttpClient` instances. Keep its layer scope alive instead of creating a new pool for each request or client. `GodotHttpClient` can however be recreated with minimal impact.
+`GodotConnectionPool` is a reusable pool of Godot `HTTPClient` connections. It should be long-lived and shared across requests and `HttpClient` instances. Keep its layer scope alive instead of creating a new pool for each request or client. `GodotHttpClient` can however be recreated with minimal impact.
 
 Use `GodotHttpClient.layerWithOptions(options)` to set `maxBodyBytes`, `readChunkSize`.
 
