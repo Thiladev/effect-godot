@@ -1,10 +1,10 @@
 import { Effect, Stream } from "effect"
-import { LanguageModel } from "effect/unstable/ai"
+import { LanguageModel } from "effect/ai"
 import { Label } from "godot"
 import Runtime from "./Runtime.js"
 
 
-export default class AiExampleLabel extends Runtime.EffectfulNode(Label) {
+export default class AiExampleLabel extends Runtime.Effectful(Label) {
     _ready(): void {
         this.text = ""
         this.runPromise(

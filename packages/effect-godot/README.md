@@ -4,7 +4,7 @@ Experimental Effect v4 bindings for [GodotJS](https://github.com/godotjs/GodotJS
 
 ## Quick setup
 
-Install `effect@rc` and `effect-godot`, then bundle your TypeScript scripts and your dependencies to CommonJS before Godot loads them. This is required since GodotJS can only load CommonJS scripts. Both `effect` and this library are ESM-only.
+Install `effect` and `effect-godot`, then bundle your TypeScript scripts and your dependencies to CommonJS before Godot loads them. This is required since GodotJS can only load CommonJS scripts. Both `effect` and this library are ESM-only.
 
 A minimal bundler configuration should use `format: "cjs"` and keep `godot` external. See the `game` package inside this monorepo for a bundler config example using Rolldown.
 
@@ -51,11 +51,11 @@ GameRuntime (Node, GameRuntime.ts)
 └── GreeterLabel (Label, GreeterLabel.ts)
 ```
 
-## EffectfulNode
+## Effectful
 
-To use Effect within ordinary Godot nodes, use the runtime class's `EffectfulNode` trait. It preserves the base node class and adds:
+To use Effect within ordinary Godot nodes, use the runtime class's `Effectful` trait. It preserves the base node class and adds:
 
-- `runtime_node`: the `RuntimeNode` found in the scene tree.
+- `runtimeNode`: the `RuntimeNode` found in the scene tree.
 - `runSync(effect)`: runs an Effect synchronously with the runtime's services.
 - `runPromise(effect, options?)`: runs an Effect as a promise.
 - `runFork(effect, options?)`: forks an Effect using the runtime.
@@ -66,7 +66,7 @@ import { Effect } from "effect"
 import { Label } from "godot"
 import GameRuntime, { Greeter } from "./GameRuntime.js"
 
-export default class GreeterLabel extends GameRuntime.EffectfulNode(Label) {
+export default class GreeterLabel extends GameRuntime.Effectful(Label) {
   async _ready(): Promise<void> {
     await this.runPromise(
       Greeter.use((greeter) => greeter.greet("Godot")).pipe(
@@ -124,11 +124,11 @@ export default class Runtime extends RuntimeNode.RuntimeNode(layer) {}
 
 // src/HttpClientNode.ts
 import { Console, Effect, Inspectable } from "effect"
-import { HttpClient } from "effect/unstable/http"
+import { HttpClient } from "effect/http"
 import { Node } from "godot"
 import Runtime from "./Runtime.js"
 
-export default class HttpClientNode extends Runtime.EffectfulNode(Node) {
+export default class HttpClientNode extends Runtime.Effectful(Node) {
   async _ready(): Promise<void> {
     await this.runPromise(
       HttpClient.get("https://example.com").pipe(

@@ -15,12 +15,12 @@
     "typegen": "godot-bin --project . run -- --headless --editor --generate-types --path ."
   },
   "dependencies": {
-    "@effect/ai-openrouter": "4.0.0-rc.112",
-    "effect": "^4.0.0-rc.112",
+    "@effect/ai-openrouter": "^4.0.0",
+    "effect": "^4.0.0",
     "effect-godot": "workspace:*"
   },
   "devDependencies": {
-    "@effect/platform-bun": "^4.0.0-rc.112",
+    "@effect/platform-bun": "^4.0.0",
     "@effect-godot/godot-bin": "workspace:*",
     "@types/node": "^26.4.1",
     "esbuild": "^0.28.2",

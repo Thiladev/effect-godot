@@ -3,7 +3,7 @@ import { Label } from "godot"
 import GreeterRuntime, { Greeter } from "./RuntimeNodeExample.js"
 
 
-export default class GreeterLabel extends GreeterRuntime.EffectfulNode(Label) {
+export default class GreeterLabel extends GreeterRuntime.Effectful(Label) {
     _ready(): void {
         this.runPromise(
             Greeter.use(greeter => greeter.greet("Godot")).pipe(

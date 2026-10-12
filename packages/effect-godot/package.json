@@ -1,6 +1,6 @@
 {
   "name": "effect-godot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "files": [
     "./README.md",
@@ -66,10 +66,10 @@
     "whatwg-url": "^17.1.0"
   },
   "peerDependencies": {
-    "effect": "^4.0.0-rc.112"
+    "effect": "^4.0.0"
   },
   "devDependencies": {
-    "effect": "^4.0.0-rc.112",
+    "effect": "^4.0.0",
     "@types/text-encoding": "^0.0.40",
     "@types/whatwg-url": "^13.0.0"
   }

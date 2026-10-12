@@ -1,6 +1,6 @@
 import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Console, Effect, FileSystem, Option, Ref, Stream } from "effect"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { ChildProcess, ChildProcessSpawner } from "effect/process"
 
 // Rolldown's `input` (see rolldown.config.ts) is computed once when the
 // config loads, so its own `--watch` mode never notices a file added or

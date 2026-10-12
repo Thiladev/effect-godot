@@ -20,9 +20,9 @@
 
 import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Console, Effect, FileSystem, Layer, Option, Path, Schema } from "effect"
-import { Argument, Command, Flag } from "effect/unstable/cli"
-import { FetchHttpClient, HttpClient } from "effect/unstable/http"
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
+import { Argument, Command, Flag } from "effect/cli"
+import { FetchHttpClient, HttpClient } from "effect/http"
+import { ChildProcess, ChildProcessSpawner } from "effect/process"
 
 class GodotBinError extends Schema.TaggedError<GodotBinError>()(
     "GodotBinError",
@@ -310,7 +310,7 @@ const ensureCefAddon = (projectDir: string) =>
         ),
     )
 
-const project = Flag.directory("project", { mustExist: true }).pipe(
+const project = Flag.Directory("project", { mustExist: true }).pipe(
     Flag.withDescription(
         "Godot project directory containing godot.config.json",
     ),
@@ -346,23 +346,25 @@ const fetchCommand = Command.make("fetch", {}, () =>
 
 const runCommand = Command.make(
     "run",
-    { args: Argument.variadic(Argument.string("args")) },
+    { args: Argument.variadic(Argument.String("args")) },
     ({ args }) =>
         Effect.gen(function* () {
             const { project } = yield* root
             const binary = yield* ensureBinary(project)
             const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const commandArgs: ReadonlyArray<string> = args
+            const commandOptions: ChildProcess.CommandOptions = {
+                cwd: project,
+                stdin: "inherit",
+                stdout: "inherit",
+                stderr: "inherit",
+                env: { GODOT: binary },
+                extendEnv: true,
+            }
 
             const exitCode = yield* spawner
                 .exitCode(
-                    ChildProcess.make(binary, [...args], {
-                        cwd: project,
-                        stdin: "inherit",
-                        stdout: "inherit",
-                        stderr: "inherit",
-                        env: { GODOT: binary },
-                        extendEnv: true,
-                    }),
+                    ChildProcess.make(binary, commandArgs, commandOptions),
                 )
                 .pipe(Effect.mapError((cause) => new GodotBinError({ cause })))
 

@@ -16,7 +16,7 @@ import { GodotConfig, GodotConnectionPool, GodotHttpClient, RuntimeNode } from "
  * e.g. `OPENROUTER_API_KEY=sk-or-v1-... godot-bin --project . run`.
  */
 const OpenRouter = OpenRouterClient.layerConfig({
-    apiKey: Config.redacted("OPENROUTER_API_KEY"),
+    apiKey: Config.Redacted("OPENROUTER_API_KEY"),
 })
 
 export const layer = Layer.empty.pipe(

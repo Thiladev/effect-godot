@@ -1,5 +1,5 @@
 import { Array, Effect, Exit, Inspectable, Layer, Option, Pipeable, Queue, Ref, type Schema, Stream } from "effect"
-import { Cookies, Headers, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, HttpIncomingMessage, HttpMethod, UrlParams } from "effect/unstable/http"
+import { Cookies, Headers, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, HttpIncomingMessage, HttpMethod, UrlParams } from "effect/http"
 import { Callable, Engine, HTTPClient as GodotHTTPClient, TLSOptions } from "godot"
 import type { PackedByteArray, PackedStringArray, SceneTree } from "godot"
 import * as GodotConnectionPool from "./GodotConnectionPool.js"
@@ -63,7 +63,7 @@ const GODOT_STATUS_ERROR_DESCRIPTIONS: Record<number, string> = {
     [GODOT_STATUS_TLS_HANDSHAKE_ERROR]: "TLS handshake failed",
 }
 
-const GODOT_METHOD: Record<HttpMethod.HttpMethod, GodotHTTPClient.Method> = {
+const GODOT_METHOD: Record<Exclude<HttpMethod.HttpMethod, "QUERY">, GodotHTTPClient.Method> = {
     GET: 0,
     HEAD: 1,
     POST: 2,
@@ -198,18 +198,21 @@ implements HttpClientResponse.HttpClientResponse, Pipeable.Pipeable {
     readonly [HttpClientResponse.TypeId]: typeof HttpClientResponse.TypeId = HttpClientResponse.TypeId
 
     readonly request: HttpClientRequest.HttpClientRequest
+    readonly url: string
     readonly status: number
     private readonly rawHeaders: readonly string[]
     private readonly bodyStream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>
 
     constructor(
         request: HttpClientRequest.HttpClientRequest,
+        url: string,
         status: number,
         rawHeaders: readonly string[],
         bodyStream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
     ) {
         super()
         this.request = request
+        this.url = url
         this.status = status
         this.rawHeaders = rawHeaders
         this.bodyStream = bodyStream
@@ -553,12 +556,7 @@ const streamResponseBody = (
 const attemptGodotRequest = (
     options: GodotHttpClientOptions,
     request: HttpClientRequest.HttpClientRequest,
-    url: {
-        readonly protocol: string
-        readonly hostname: string
-        readonly pathname: string
-        readonly search: string
-    },
+    url: URL,
     signal: AbortableSignal,
     body: EncodedRequestBody,
     maxBodyBytes: number,
@@ -570,6 +568,13 @@ const attemptGodotRequest = (
     hostKey: string,
 ): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> =>
     Effect.gen(function* () {
+        if (request.method === "QUERY") {
+            return yield* Effect.fail(
+                makeTransportError(request, "Godot HTTPClient does not support the QUERY method"),
+            )
+        }
+        const method = GODOT_METHOD[request.method]
+
         const connection = yield* makeConnection(client, signal, pool, hostKey)
         if (options.readChunkSize !== undefined) {
             connection.client.read_chunk_size = options.readChunkSize
@@ -593,7 +598,6 @@ const attemptGodotRequest = (
                 }
 
                 const headers = toRequestHeaderLines(request, body)
-                const method = GODOT_METHOD[request.method]
                 const target = url.pathname + url.search
                 const requestCode =
                     body.body === undefined || typeof body.body === "string"
@@ -624,11 +628,18 @@ const attemptGodotRequest = (
 
                 if (statusAfterRequest !== GODOT_STATUS_BODY) {
                     yield* connection.release
-                    return new GodotClientResponse(request, status, responseHeaders, Stream.empty)
+                    return new GodotClientResponse(
+                        request,
+                        `${url.origin}${url.pathname}${url.search}`,
+                        status,
+                        responseHeaders,
+                        Stream.empty,
+                    )
                 }
 
                 return new GodotClientResponse(
                     request,
+                    `${url.origin}${url.pathname}${url.search}`,
                     status,
                     responseHeaders,
                     streamResponseBody(connection, request, maxBodyBytes),
@@ -648,13 +659,7 @@ const runGodotRequest = (
     options: GodotHttpClientOptions,
     maxBodyBytes: number,
     request: HttpClientRequest.HttpClientRequest,
-    url: {
-        readonly protocol: string
-        readonly hostname: string
-        readonly port: string
-        readonly pathname: string
-        readonly search: string
-    },
+    url: URL,
     signal: AbortableSignal,
 ): Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> =>
     Effect.gen(function* () {

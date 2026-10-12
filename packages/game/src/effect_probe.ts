@@ -1,6 +1,6 @@
 import { HTTPClient, Node, TLSOptions } from "godot"
 import { DateTime, Effect, Fiber, Schema, Stream } from "effect"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import { GodotHttpClient } from "effect-godot"
 
 
@@ -44,7 +44,7 @@ export default class EffectProbe extends Node {
             }),
         )
 
-        await this.check("effect/unstable/http module resolution", () =>
+        await this.check("effect/http module resolution", () =>
             Effect.sync(() => {
                 const request = HttpClientRequest.get("https://example.test/")
                 if (request.url !== "https://example.test/") {

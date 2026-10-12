@@ -14,7 +14,7 @@ const GreeterLive = Layer.succeed(Greeter, {
 
 /**
  * Owns the `ManagedRuntime` for `Greeter`. Attach this script to any node in
- * the scene — `EffectfulNode` descendants built from `GreeterRuntime` find
+ * the scene — `Effectful` descendants built from `GreeterRuntime` find
  * it regardless of where either node sits in the tree.
  */
 export default class GreeterRuntime extends RuntimeNode.RuntimeNode(GreeterLive) {}
