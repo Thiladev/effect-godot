@@ -1,5 +1,5 @@
 import { Effect, Fiber, Layer, ManagedRuntime, Predicate } from "effect"
-import { Node } from "godot"
+import { Callable, Node } from "godot"
 import * as GodotCrypto from "./GodotCrypto.js"
 
 
@@ -56,13 +56,13 @@ export const RuntimeNode = <R, E>(
             this.runSync = effect => this.runtimeNode.runtime.runSync(effect)
             this.runPromise = (effect, options) => this.runtimeNode.runtime.runPromise(effect, options)
             this.runFork = (effect, options) => this.runtimeNode.runtime.runFork(effect, options)
-        }
 
-        _enter_tree(): void {
-            const found = this.get_tree().get_first_node_in_group(X.group) as RuntimeNode<R, E> | null
-            if (!found)
-                throw new Error(`Effectful: no RuntimeNode found in group "${X.group}"`)
-            this.runtimeNode = found
+            this.tree_entered.connect(Callable.create(this, () => {
+                const found = this.get_tree().get_first_node_in_group(X.group) as RuntimeNode<R, E> | null
+                if (!found)
+                    throw new Error(`Effectful: no RuntimeNode found in group "${X.group}"`)
+                this.runtimeNode = found
+            }))
         }
     } as unknown as EffectfulClass<T, R, E>)
 
